@@ -8,6 +8,15 @@ import Describe from './components/Describe';
 import registry from './core/registry';
 import { ComponentEntry, ScreenComponent } from './core/types';
 
+// Define tour step interface for external use
+export interface TourStep {
+  id: string; // Component ID
+  title?: string; // Title for this step
+  description?: string; // Description/content for this step
+  position?: 'top' | 'right' | 'bottom' | 'left';
+  align?: 'start' | 'center' | 'end';
+}
+
 // Export components and hooks
 export { action, useHlasActions, Describe };
 
@@ -32,9 +41,19 @@ interface HlasInterface {
   focus: (id: string) => boolean;
   
   /**
-   * Highlight a component by ID
+   * Highlight a component by ID with optional tooltip
+   * @param id Component ID to highlight 
+   * @param duration Duration in milliseconds
+   * @param tooltip Optional tooltip content (can be provided by LLM)
    */
-  highlight: (id: string, duration?: number) => boolean;
+  highlight: (id: string, duration?: number, tooltip?: string) => boolean;
+  
+  /**
+   * Start a guided tour with multiple steps
+   * @param steps Array of tour steps with component IDs and descriptions
+   * @param autoStart Whether to start the tour automatically (default: true)
+   */
+  startTour: (steps: TourStep[], autoStart?: boolean) => boolean;
   
   /**
    * Read the current screen state
@@ -49,7 +68,8 @@ if (typeof window !== 'undefined') {
     execute: (id: string, actionId: string, params?: Record<string, any>) => 
       registry.execute(id, actionId, params),
     focus: (id: string) => registry.focus(id),
-    highlight: (id: string, duration?: number) => registry.highlight(id, duration),
+    highlight: (id: string, duration?: number, tooltip?: string, description?: string) => registry.highlight(id, duration, tooltip, description),
+    startTour: (steps: TourStep[], autoStart?: boolean) => registry.startTour(steps, autoStart),
     readScreen: () => registry.readScreen()
   } as HlasInterface;
 }

@@ -35,6 +35,7 @@ const ActionInput = action(
       { name: 'value', description: 'The value to set' }
     ]
   },
+
   // Using React.forwardRef to properly handle the ref
   React.forwardRef<HTMLElement, React.InputHTMLAttributes<HTMLInputElement>>(
     (props, ref) => <input ref={ref as React.RefObject<HTMLInputElement>} {...props} />

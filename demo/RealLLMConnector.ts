@@ -45,32 +45,15 @@ screen and perform actions on behalf of the user.
 ## Current Screen State
 ${JSON.stringify(screenState, null, 2)}
 
-## Available Actions
-${screenState.map(component => {
-  if (!component.actions || component.actions.length === 0) return '';
-  return `
-* Component: "${component.name}" (ID: ${component.id})
-  - Description: ${component.description || 'No description'}
-  - Actions: ${component.actions.map(action => action.id).join(', ')}
-`;
-}).filter(Boolean).join('')}
+You can execute actions using: EXECUTE(componentId, actionId, parameters)
+You can focus on elements using: FOCUS(componentId)
+- You can highlight elements using: HIGHLIGHT(componentId, durationMs, "Optional tooltip content")
+- You can create guided tours using: TOUR([{"id":"componentId1","title":"Step 1","description":"Description for step 1","position":"bottom"},{"id":"componentId2","title":"Step 2","description":"Description for step 2","position":"top","align":"center"}])
 
-## Content Elements
-${screenState.map(component => {
-  if (!component.content) return '';
-  return `
-* ${component.name}: ${JSON.stringify(component.content, null, 2)}
-`;
-}).filter(Boolean).join('')}
+The TOUR command takes a JSON array of steps, where each step must have at least an 'id' property, and can optionally include 'title', 'description', 'position', and 'align' properties. Position can be one of: 'top', 'right', 'bottom', 'left'. Align can be: 'start', 'center', or 'end'.
 
-## Instructions
-- You can execute actions using the syntax: EXECUTE(componentId, actionId, parameters)
-- You can focus on elements using: FOCUS(componentId)
-- You can highlight elements using: HIGHLIGHT(componentId, durationMs)
-- Respond to the user's request based on the current screen state
-- If you need more information, you can ask for it
-
-Only respond with EXECUTE, FOCUS, or HIGHLIGHT commands or direct answers to questions.
+Only respond with EXECUTE, FOCUS, HIGHLIGHT, TOUR commands or direct answers to questions.
+Keep your responses concise and focused on helping the user accomplish their task.
 `;
   }
 
@@ -130,27 +113,28 @@ Only respond with EXECUTE, FOCUS, or HIGHLIGHT commands or direct answers to que
     }
 
     // Look for EXECUTE commands
-    const executeMatches = response.matchAll(/EXECUTE\((['"]?)(.*?)\1,\s*(['"]?)(.*?)\3(?:,\s*({.*?}))?\)/g);
+    const executeMatches = response.matchAll(/EXECUTE\((['"\s]?)(.*?)\1,\s*(['"\s]?)(.*?)\3(?:,\s*([^)]*))?\)/g);
     for (const match of executeMatches) {
       const componentId = match[2];
       const actionId = match[4];
-      const paramsStr = match[5];
-      
       let params = {};
-      if (paramsStr) {
+
+      if (match[5]) {
         try {
-          params = JSON.parse(paramsStr);
+          params = JSON.parse(match[5]);
         } catch (e) {
-          console.error('Error parsing parameters:', e);
+          // If not valid JSON, try parsing as a simple string
+          // This is for convenience in simple cases like EXECUTE(component, action, "simple string")
+          params = { value: match[5].trim().replace(/^['"]|['"]$/g, '') };
         }
       }
-      
+
       window.hlas.execute(componentId, actionId, params);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for effects
+      await new Promise(resolve => setTimeout(resolve, 500)); // Wait for effects
     }
 
     // Look for FOCUS commands
-    const focusMatches = response.matchAll(/FOCUS\((['"]?)(.*?)\1\)/g);
+    const focusMatches = response.matchAll(/FOCUS\((['"\s]?)(.*?)\1\)/g);
     for (const match of focusMatches) {
       const componentId = match[2];
       window.hlas.focus(componentId);
@@ -158,12 +142,33 @@ Only respond with EXECUTE, FOCUS, or HIGHLIGHT commands or direct answers to que
     }
 
     // Look for HIGHLIGHT commands
-    const highlightMatches = response.matchAll(/HIGHLIGHT\((['"]?)(.*?)\1(?:,\s*(\d+))?\)/g);
+    // Format: HIGHLIGHT(componentId, duration?, "tooltip content?")
+    const highlightMatches = response.matchAll(/HIGHLIGHT\((['"\s]?)(.*?)\1(?:,\s*(\d+))?(?:,\s*(['"\s])(.*?)\4)?\)/g);
     for (const match of highlightMatches) {
       const componentId = match[2];
       const duration = match[3] ? parseInt(match[3]) : undefined;
-      window.hlas.highlight(componentId, duration);
+      const tooltip = match[5] || undefined;
+      window.hlas.highlight(componentId, duration, tooltip);
       await new Promise(resolve => setTimeout(resolve, 500)); // Wait for effects
+    }
+
+    // Look for TOUR commands
+    // Format: TOUR([{"id":"componentId1","title":"Step 1","description":"Description"}, ...])
+    const tourRegex = /TOUR\(\s*(\[.*?\])\s*\)/s;
+    const tourMatch = response.match(tourRegex);
+    if (tourMatch && tourMatch[1]) {
+      try {
+        const stepsJson = tourMatch[1];
+        const steps = JSON.parse(stepsJson);
+        if (Array.isArray(steps) && steps.length > 0) {
+          window.hlas.startTour(steps);
+          // No need to wait after starting a tour as it's interactive
+        } else {
+          console.error('TOUR command requires a non-empty array of steps');
+        }
+      } catch (e) {
+        console.error('Failed to parse TOUR command:', e);
+      }
     }
   }
 }

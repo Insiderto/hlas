@@ -48,7 +48,8 @@ ${screenState.map(component => {
 ## Instructions
 - You can execute actions using the syntax: EXECUTE(componentId, actionId, parameters)
 - You can focus on elements using: FOCUS(componentId)
-- You can highlight elements using: HIGHLIGHT(componentId, durationMs)
+- You can highlight elements using: HIGHLIGHT(componentId, durationMs, "Optional tooltip content")
+- You can create guided tours using: TOUR([{"id":"componentId1","title":"Step 1","description":"Description for step 1","position":"bottom"},{"id":"componentId2","title":"Step 2","description":"Description for step 2","position":"top","align":"center"}])
 - Respond to the user's request based on the current screen state
 - If you need more information, you can ask for it
 
