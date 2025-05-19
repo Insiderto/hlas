@@ -2,6 +2,7 @@
  * Simplified demo launcher for hlas library PoC
  */
 
+
 const { execSync } = require('child_process');
 
 // Use a simpler approach to run the demo directly

@@ -2,33 +2,33 @@
  * Basic Describe components for hlas
  */
 
-import React, { forwardRef, useRef, useEffect, useId } from 'react';
-import { DescribeProps, ListProps, ListItemProps } from '../core/types';
-import registry from '../core/registry';
+import React, { forwardRef, useRef, useEffect, useId } from "react";
+import { DescribeProps, ListProps, ListItemProps } from "../core/types";
+import registry from "../core/registry";
 
 /**
  * Basic component to describe content to LLMs
  */
 const DescribeBase = forwardRef<HTMLDivElement, DescribeProps>(
   ({ name, description, children }, ref) => {
-      const id = useId()
+    const id = useId();
     const innerRef = useRef<HTMLDivElement>(null);
     const resolvedRef = (ref || innerRef) as React.RefObject<HTMLDivElement>;
-    
+
     useEffect(() => {
       const element = resolvedRef.current;
       if (!element) return;
-      
+
       // Register with registry
-       registry.register(
-           id,
+      registry.register(
+        id,
 
         element,
-        name || 'Unnamed Component',
+        name || "Unnamed Component",
         [],
-        description
+        description,
       );
-      
+
       // Clean up on unmount
       return () => {
         registry.unregister(id);
@@ -36,44 +36,41 @@ const DescribeBase = forwardRef<HTMLDivElement, DescribeProps>(
     }, [name, description]);
 
     return (
-      <div 
+      <div
         ref={resolvedRef}
-        data-hlas-component={name || 'Generic'}
-        data-hlas-description={description || ''}
+        data-hlas-component={name || "Generic"}
+        data-hlas-description={description || ""}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 
+DescribeBase.displayName = "DescribeBase";
+
 /**
+ *
  * Describe.List component for describing lists of items
  */
 const List = forwardRef<HTMLUListElement, ListProps>(
   ({ name, description, children, items }, ref) => {
-      const id = useId()
+    const id = useId();
     const innerRef = useRef<HTMLUListElement>(null);
     const resolvedRef = (ref || innerRef) as React.RefObject<HTMLUListElement>;
-    
+
     useEffect(() => {
       const element = resolvedRef.current;
       if (!element) return;
-      
+
       // Register with registry
-      registry.register(
-          id,
-        element,
-        name || 'List',
-        [],
-        description
-      );
-      
+      registry.register(id, element, name || "List", [], description);
+
       // If we have items data, store it for LLM reading
       if (items && items.length > 0) {
-        element.setAttribute('data-hlas-content', JSON.stringify(items));
+        element.setAttribute("data-hlas-content", JSON.stringify(items));
       }
-      
+
       // Clean up on unmount
       return () => {
         registry.unregister(id);
@@ -84,13 +81,15 @@ const List = forwardRef<HTMLUListElement, ListProps>(
       <ul
         ref={resolvedRef}
         data-hlas-component="List"
-        data-hlas-description={description || 'A list of items'}
+        data-hlas-description={description || "A list of items"}
       >
         {children}
       </ul>
     );
-  }
+  },
 );
+
+List.displayName = "List";
 
 /**
  * Describe.ListItem component for list items
@@ -100,28 +99,23 @@ const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
     const id = useId();
     const innerRef = useRef<HTMLLIElement>(null);
     const resolvedRef = (ref || innerRef) as React.RefObject<HTMLLIElement>;
-    
+
     useEffect(() => {
       const element = resolvedRef.current;
       if (!element) return;
-      
-      // Register with registry 
-      
-      registry.register(
-        id,
-        element,
-        name || 'ListItem',
-        [],
-        description
-      );
-      
+
+      // Register with registry
+
+      registry.register(id, element, name || "ListItem", [], description);
+
       // If we have value data, store it for LLM reading
       if (value !== undefined) {
-        element.setAttribute('data-hlas-content', 
-          typeof value === 'object' ? JSON.stringify(value) : String(value)
+        element.setAttribute(
+          "data-hlas-content",
+          typeof value === "object" ? JSON.stringify(value) : String(value),
         );
       }
-      
+
       // Clean up on unmount
       return () => {
         registry.unregister(id);
@@ -132,19 +126,21 @@ const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
       <li
         ref={resolvedRef}
         data-hlas-component="ListItem"
-        data-hlas-description={description || 'A list item'}
+        data-hlas-description={description || "A list item"}
       >
         {children}
       </li>
     );
-  }
+  },
 );
+
+ListItem.displayName = "ListItem";
 
 // Composite Describe object
 const Describe = {
   Base: DescribeBase,
   List,
-  ListItem
+  ListItem,
 };
 
 export default Describe;

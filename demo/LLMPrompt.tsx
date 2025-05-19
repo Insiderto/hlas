@@ -3,20 +3,20 @@
  * Shows how the prompt would look when passed to an LLM
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 const LLMPrompt: React.FC = () => {
-  const [promptData, setPromptData] = useState<string>('');
+  const [promptData, setPromptData] = useState<string>("");
 
   // Generate prompt data from the current screen state
   const generatePrompt = () => {
-    if (typeof window === 'undefined' || !window.hlas) {
-      return 'Error: hlas is not available';
+    if (typeof window === "undefined" || !window.hlas) {
+      return "Error: hlas is not available";
     }
 
     // Read the current screen state
     const screenState = window.hlas.readScreen();
-    
+
     // Format the system prompt that would be sent to an LLM
     const systemPrompt = `
 # System Prompt for LLM UI Interaction
@@ -28,22 +28,28 @@ screen and perform actions on behalf of the user.
 ${JSON.stringify(screenState, null, 2)}
 
 ## Available Actions
-${screenState.map(component => {
-  if (!component.actions || component.actions.length === 0) return '';
-  return `
+${screenState
+  .map((component) => {
+    if (!component.actions || component.actions.length === 0) return "";
+    return `
 * Component: "${component.name}" (ID: ${component.id})
-  - Description: ${component.description || 'No description'}
-  - Actions: ${component.actions.map(action => action.id).join(', ')}
+  - Description: ${component.description || "No description"}
+  - Actions: ${component.actions.map((action) => action.id).join(", ")}
 `;
-}).filter(Boolean).join('')}
+  })
+  .filter(Boolean)
+  .join("")}
 
 ## Content Elements
-${screenState.map(component => {
-  if (!component.content) return '';
-  return `
+${screenState
+  .map((component) => {
+    if (!component.content) return "";
+    return `
 * ${component.name}: ${JSON.stringify(component.content, null, 2)}
 `;
-}).filter(Boolean).join('')}
+  })
+  .filter(Boolean)
+  .join("")}
 
 ## Instructions
 - You can execute actions using the syntax: EXECUTE(componentId, actionId, parameters)
@@ -54,7 +60,7 @@ ${screenState.map(component => {
 - If you need more information, you can ask for it
 
 ## User Request:
-"${window.lastCommand || 'What todos do I have?'}"
+"${window.lastCommand || "What todos do I have?"}"
 `;
 
     return systemPrompt;
@@ -75,7 +81,7 @@ ${screenState.map(component => {
     // Clean up interval on unmount
     return () => clearInterval(intervalId);
   }, []);
-  
+
   // Define function to refresh prompt on demand
   const refreshPrompt = () => {
     const prompt = generatePrompt();
@@ -86,17 +92,15 @@ ${screenState.map(component => {
     <div className="llm-prompt-demo">
       <h2>LLM Prompt Visualization</h2>
       <p>
-        This shows how the current screen state would be formatted as a prompt for an LLM.
-        This is what would be sent to the LLM when processing commands.
+        This shows how the current screen state would be formatted as a prompt
+        for an LLM. This is what would be sent to the LLM when processing
+        commands.
       </p>
-      
-      <button 
-        className="prompt-button"
-        onClick={refreshPrompt}
-      >
+
+      <button className="prompt-button" onClick={refreshPrompt}>
         Refresh Prompt
       </button>
-      
+
       <div className="prompt-container">
         <h3>Generated LLM Prompt:</h3>
         <pre className="prompt-data">{promptData}</pre>

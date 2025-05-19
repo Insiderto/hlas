@@ -2,9 +2,9 @@
  * Global registry implementation for hlas
  */
 
-import { ActionSchema, ComponentEntry, ScreenComponent } from './types';
-import { driver } from 'driver.js';
-import 'driver.js/dist/driver.css';
+import { ActionSchema, ComponentEntry, ScreenComponent } from "./types";
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 
 /**
  * Registry class for managing components and their actions
@@ -14,8 +14,8 @@ interface TourStep {
   id: string; // Component ID
   title?: string; // Title for this step
   description?: string; // Description/content for this step
-  position?: 'top' | 'right' | 'bottom' | 'left';
-  align?: 'start' | 'center' | 'end';
+  position?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
 }
 
 class Registry {
@@ -26,7 +26,7 @@ class Registry {
 
   constructor() {
     // Initialize driver instance when DOM is available
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // Delay initialization to ensure DOM is fully loaded
       setTimeout(() => {
         this.highlightDriverInstance = driver({
@@ -38,11 +38,11 @@ class Registry {
           // @ts-ignore - opacity is supported by driver.js but not in their types
           opacity: 0.5,
           onDestroyStarted: () => {
-            this.highlightDriverInstance?.destroy();             // For highlight driver only
+            this.highlightDriverInstance?.destroy(); // For highlight driver only
           },
           onDestroyed: () => {
-            this.highlightDriverInstance?.destroy();            // For highlight driver only
-          }
+            this.highlightDriverInstance?.destroy(); // For highlight driver only
+          },
         });
       }, 0);
     }
@@ -64,26 +64,29 @@ class Registry {
     description?: string,
   ): string {
     const componentId = id;
-    
+
     this.components.set(componentId, {
       id: componentId,
       element,
       actions,
       name,
-      description
+      description,
     });
 
     // Add data attributes to the DOM element
-    element.setAttribute('data-hlas-id', componentId);
-    element.setAttribute('data-hlas-name', name);
-    
+    element.setAttribute("data-hlas-id", componentId);
+    element.setAttribute("data-hlas-name", name);
+
     if (description) {
-      element.setAttribute('data-hlas-description', description);
+      element.setAttribute("data-hlas-description", description);
     }
 
     // Add action data
     if (actions.length > 0) {
-      element.setAttribute('data-hlas-actions', actions.map(a => a.id).join(','));
+      element.setAttribute(
+        "data-hlas-actions",
+        actions.map((a) => a.id).join(","),
+      );
     }
 
     return componentId;
@@ -105,7 +108,7 @@ class Registry {
     for (const component of this.components.values()) {
       if (
         component.name.toLowerCase().includes(lowerQuery) ||
-        (component.description && 
+        (component.description &&
           component.description.toLowerCase().includes(lowerQuery))
       ) {
         results.push(component);
@@ -122,18 +125,18 @@ class Registry {
     // This is a stub - the actual execution is handled by the useHlasActions hook
     // This method just dispatches a custom event that the hook listens for
     const component = this.components.get(id);
-    
+
     if (!component) {
       console.error(`Component with ID ${id} not found`);
       return false;
     }
 
-    const event = new CustomEvent('hlas:execute', {
+    const event = new CustomEvent("hlas:execute", {
       detail: {
         id,
         actionId,
-        params: params || {}
-      }
+        params: params || {},
+      },
     });
 
     component.element.dispatchEvent(event);
@@ -145,7 +148,7 @@ class Registry {
    */
   focus(id: string): boolean {
     const component = this.components.get(id);
-    
+
     if (!component) {
       console.error(`Component with ID ${id} not found`);
       return false;
@@ -155,10 +158,10 @@ class Registry {
       component.element.focus();
       return true;
     }
-    
+
     return false;
   }
-  
+
   /**
    * Highlight a component by ID using Driver.js
    * @param id Component ID to highlight
@@ -178,33 +181,35 @@ class Registry {
         this.tourDriverInstance.destroy();
         this.activeTour = false;
       }
-      
+
       // Validate and collect elements for the tour
       const driverSteps = [];
-      
+
       for (const step of steps) {
         const component = this.components.get(step.id);
         if (!component || !(component.element instanceof HTMLElement)) {
-          console.warn(`Component with ID ${step.id} not found or not an HTML element`);
+          console.warn(
+            `Component with ID ${step.id} not found or not an HTML element`,
+          );
           continue;
         }
-        
+
         driverSteps.push({
           element: component.element,
           popover: {
             title: step.title || component.name,
-            description: step.description || (component.description || ''),
-            side: step.position || 'bottom',
-            align: step.align || 'center'
-          }
+            description: step.description || component.description || "",
+            side: step.position || "bottom",
+            align: step.align || "center",
+          },
         });
       }
-      
+
       if (driverSteps.length === 0) {
-        console.error('No valid steps found for tour');
+        console.error("No valid steps found for tour");
         return false;
       }
-      
+
       // Create a new Tour Driver instance with the steps
       this.tourDriverInstance = driver({
         animate: true,
@@ -220,22 +225,22 @@ class Registry {
         },
         onDestroyed: () => {
           this.activeTour = false;
-        }
+        },
       });
-      
+
       // Start the tour if requested
       if (autoStart) {
         this.tourDriverInstance.drive();
         this.activeTour = true;
       }
-      
+
       return true;
     } catch (error) {
-      console.error('Error starting tour:', error);
+      console.error("Error starting tour:", error);
       return false;
     }
   }
-  
+
   /**
    * Highlight a component by ID using Driver.js
    * @param id Component ID to highlight
@@ -243,18 +248,23 @@ class Registry {
    * @param title Optional title to show (can be provided by LLM)
    * @param description Optional description to show (can be provided by LLM)
    */
-  highlight(id: string, duration: number = 2000, title?: string, description?: string): boolean {
+  highlight(
+    id: string,
+    duration: number = 2000,
+    title?: string,
+    description?: string,
+  ): boolean {
     // We don't need to destroy an active tour as we now have separate instances
     // for tour and highlight functionality
-    
+
     const component = this.components.get(id);
-    
+
     if (!component) {
       console.error(`Component with ID ${id} not found`);
       return false;
     }
 
-    if (!this.highlightDriverInstance && typeof window !== 'undefined') {
+    if (!this.highlightDriverInstance && typeof window !== "undefined") {
       this.highlightDriverInstance = driver({
         animate: true,
         smoothScroll: true,
@@ -264,7 +274,10 @@ class Registry {
       });
     }
 
-    if (component.element instanceof HTMLElement && this.highlightDriverInstance) {
+    if (
+      component.element instanceof HTMLElement &&
+      this.highlightDriverInstance
+    ) {
       // Ensure highlight driver is stopped before starting a new highlight
       this.highlightDriverInstance.destroy();
 
@@ -274,8 +287,7 @@ class Registry {
         popover: {
           title: title,
           description: description,
-        }
-
+        },
       });
 
       // Automatically close highlight after duration
@@ -301,11 +313,11 @@ class Registry {
       // No visibility check - include all components
       // We still calculate the rect for metadata purposes
       const visible = true; // Set all components as visible
-      
+
       // Extract content from data attributes if available
       let content: any = undefined;
-      const contentAttr = component.element.getAttribute('data-hlas-content');
-      
+      const contentAttr = component.element.getAttribute("data-hlas-content");
+
       if (contentAttr) {
         try {
           content = JSON.parse(contentAttr);
@@ -320,7 +332,7 @@ class Registry {
         description: component.description,
         visible,
         actions: component.actions,
-        content
+        content,
       });
     }
 

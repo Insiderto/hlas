@@ -2,7 +2,7 @@
  * Core type definitions for the hlas library
  */
 
-import { ReactNode, ForwardRefExoticComponent, RefAttributes } from 'react';
+import { ReactNode, ForwardRefExoticComponent, RefAttributes } from "react";
 
 /**
  * Action schema defining the shape of an action in hlas
@@ -29,7 +29,7 @@ export interface ActionParameter {
   /** Whether the parameter is required */
   required?: boolean;
   /** Type of the parameter */
-  type?: 'string' | 'number' | 'boolean' | 'object';
+  type?: "string" | "number" | "boolean" | "object";
   /** Default value if not provided */
   defaultValue?: any;
 }
