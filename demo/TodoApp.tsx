@@ -12,6 +12,10 @@ interface Todo {
   completed: boolean;
 }
 
+interface SetValueParams {
+  value?: string;
+}
+
 // Create a wrapped Button component with action
 const ActionButton = action(
   {
@@ -32,21 +36,25 @@ const ActionButton = action(
 ActionButton.displayName = "ActionButton";
 
 // Create a wrapped Input component with setValue action
+const ForwardedInput = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(function InnerActionInput(props, ref) {
+  return <input ref={ref} {...props} />;
+});
+ForwardedInput.displayName = "ForwardedActionInput";
+
 const ActionInput = action(
   {
-    id: "setValue",
-    name: "Set Value",
+    id: "setValue", // This ID is also used by the LLMInterface, consider if it should be more specific like "todo-input-setValue"
+    name: "Set Value", // Name for the action, not the component
     description: "Set the input value",
     parameters: [{ name: "value", description: "The value to set" }],
   },
-
-  // Using React.forwardRef to properly handle the ref
-  React.forwardRef<HTMLElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    (props, ref) => (
-      <input ref={ref as React.RefObject<HTMLInputElement>} {...props} />
-    ),
-  ),
+  ForwardedInput,
 );
+// It might be beneficial to also set a displayName on ActionInput itself if the `action` HOC doesn't.
+// e.g., ActionInput.displayName = "ActionInputComponent";
 
 const TodoApp: React.FC = () => {
   // State for todos
@@ -63,7 +71,7 @@ const TodoApp: React.FC = () => {
 
   // Actions for the Todo Input field
   const todoInputActions = {
-    setValue: (params: Record<string, any> = {}) => {
+    setValue: (params: SetValueParams = {}) => {
       if (params.value && typeof params.value === "string") {
         setNewTodo(params.value);
       }
@@ -208,5 +216,6 @@ const TodoApp: React.FC = () => {
     </div>
   );
 };
+TodoApp.displayName = "TodoApp";
 
 export default TodoApp;

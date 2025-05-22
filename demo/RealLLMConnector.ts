@@ -124,7 +124,7 @@ Keep your responses concise and focused on helping the user accomplish their tas
       if (match[5]) {
         try {
           params = JSON.parse(match[5]);
-        } catch (e) {
+        } catch {
           // If not valid JSON, try parsing as a simple string
           // This is for convenience in simple cases like EXECUTE(component, action, "simple string")
           params = { value: match[5].trim().replace(/^['"]|['"]$/g, "") };

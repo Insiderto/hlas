@@ -29,10 +29,6 @@ const App = () => {
     setCommand("");
   };
 
-  const toggleRealLLM = () => {
-    setShowRealLLM(!showRealLLM);
-  };
-
   return (
     <div className="app-container">
       <header className="app-header">
@@ -91,20 +87,20 @@ const App = () => {
                   <h3>Example Commands:</h3>
                   <ul>
                     <li onClick={() => setCommand("What todos do I have?")}>
-                      &quot;What todos do I have?"
+                      &quot;What todos do I have?&quot;
                     </li>
                     <li onClick={() => setCommand("Add a todo: Buy groceries")}>
-                      "Add a todo: Buy groceries"
+                      &quot;Add a todo: Buy groceries&quot;
                     </li>
                     <li
                       onClick={() =>
                         setCommand("Mark 'Learn about hlas' as completed")
                       }
                     >
-                      "Mark 'Learn about hlas' as completed"
+                      &quot;Mark &apos;Learn about hlas&apos; as completed&quot;
                     </li>
                     <li onClick={() => setCommand("Clear all completed todos")}>
-                      "Clear all completed todos"
+                      &quot;Clear all completed todos&quot;
                     </li>
                   </ul>
                 </div>

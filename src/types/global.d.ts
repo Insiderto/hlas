@@ -8,7 +8,7 @@ declare global {
       execute: (
         id: string,
         actionId: string,
-        params?: Record<string, any>,
+        params?: Record<string, unknown>,
       ) => boolean;
       focus: (id: string) => boolean;
       readScreen: () => ScreenComponent[];

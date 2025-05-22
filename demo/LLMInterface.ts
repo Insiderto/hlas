@@ -5,13 +5,10 @@
 // For PoC purposes, we'll use a simple approach with minimal typing
 // In a real implementation, we would use proper type imports
 
-// Add basic window.hlas declaration for TypeScript
-declare global {
-  interface Window {
-    hlas: any;
-    lastCommand?: string; // Track the last command for the prompt visualization
-  }
-}
+// Global window.hlas types should be picked up from src/types/global.d.ts
+// Ensure it's included in your tsconfig if not already.
+
+import type { Todo } from "./TodoApp"; // Using import type
 
 /**
  * Interface for handling LLM commands on the Todo app
@@ -158,7 +155,7 @@ class LLMInterface {
     }
 
     const todoStrings = todos.map(
-      (todo: any) => `- ${todo.text} ${todo.completed ? "(completed)" : ""}`,
+      (todo: Todo) => `- ${todo.text} ${todo.completed ? "(completed)" : ""}`,
     );
 
     return `You have the following todos:\n${todoStrings.join("\n")}`;

@@ -1,5 +1,8 @@
 /**
- * Global registry implementation for hlas
+ * @module core/registry
+ * @description Provides a global registry for managing UI components and their metadata,
+ * enabling interaction via the `window.hlas` API. It also handles features like
+ * highlighting components and orchestrating guided tours using `driver.js`.
  */
 
 import { ActionSchema, ComponentEntry, ScreenComponent } from "./types";
@@ -7,23 +10,58 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
 /**
- * Registry class for managing components and their actions
+/**
+ * @interface TourStep
+ * @description Defines the structure for a single step in a guided tour.
+ * This interface is used by the {@link Registry.startTour} method and is also
+ * exported for use by consumers who want to define tours.
+ * @property {string} id - The ID of the component to highlight in this step. This ID must correspond
+ *                         to a component registered in the {@link Registry}.
+ * @property {string} [title] - An optional title for the tour step popover. If not provided,
+ *                              the component's registered name might be used.
+ * @property {string} [description] - An optional description or content for the tour step popover.
+ *                                   If not provided, the component's registered description might be used.
+ * @property {"top" | "right" | "bottom" | "left"} [position="bottom"] - The preferred position of the popover
+ *                                                                    relative to the element. Defaults to "bottom".
+ * @property {"start" | "center" | "end"} [align="center"] - The alignment of the popover. Defaults to "center".
+ * @see window.hlas.startTour
+ * @see Registry.startTour
  */
-// Define a tour step interface
 interface TourStep {
-  id: string; // Component ID
-  title?: string; // Title for this step
-  description?: string; // Description/content for this step
+  id: string;
+  title?: string;
+  description?: string;
   position?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
 }
 
+/**
+ * @class Registry
+ * @description Manages a collection of UI components, their metadata (name, description, actions),
+ * and their corresponding DOM elements. It provides methods for registering, unregistering,
+ * finding, and interacting with these components. This class underpins the `window.hlas` API.
+ *
+ * This class is instantiated as a singleton and exported as the default module export.
+ *
+ * @property {Map<string, ComponentEntry>} components - A private map storing registered components,
+ *                                                    keyed by their unique ID.
+ * @property {ReturnType<typeof driver> | undefined} tourDriverInstance - Private instance of `driver.js`
+ *                                                                       used for guided tours.
+ * @property {ReturnType<typeof driver> | undefined} highlightDriverInstance - Private instance of `driver.js`
+ *                                                                            used for highlighting individual components.
+ * @property {boolean} activeTour - Private flag indicating if a tour is currently active.
+ */
 class Registry {
   private components: Map<string, ComponentEntry> = new Map();
   private tourDriverInstance: ReturnType<typeof driver> | undefined;
   private highlightDriverInstance: ReturnType<typeof driver> | undefined;
   private activeTour: boolean = false;
 
+  /**
+   * @constructor
+   * @description Initializes the Registry. In a browser environment, it sets up a `driver.js` instance
+   * for highlighting after a short delay to ensure the DOM is loaded.
+   */
   constructor() {
     // Initialize driver instance when DOM is available
     if (typeof window !== "undefined") {
@@ -33,28 +71,35 @@ class Registry {
           animate: true,
           smoothScroll: true,
           allowClose: true,
-          showProgress: true,
+          showProgress: true, // Show progress for single highlights for consistency with tours.
           stagePadding: 10,
-          // @ts-ignore - opacity is supported by driver.js but not in their types
+          // @ts-expect-error - opacity is supported by driver.js but not in their types
           opacity: 0.5,
-          onDestroyStarted: () => {
-            this.highlightDriverInstance?.destroy(); // For highlight driver only
-          },
-          onDestroyed: () => {
-            this.highlightDriverInstance?.destroy(); // For highlight driver only
-          },
+          // onDestroyStarted and onDestroyed are removed as highlight() manages its own lifecycle
+          // by explicitly calling destroy() before highlighting. allowClose: true handles user closing.
         });
       }, 0);
     }
   }
 
   /**
-   * Register a component in the registry
-   * @param id Optional custom ID for the component (if not provided, a unique ID will be generated)
-   * @param element
-   * @param name
-   * @param actions
-   * @param description
+   * Registers a component with the HLAS system, making it discoverable and interactive.
+   * Sets `data-hlas-*` attributes on the provided HTML element for identification and metadata.
+   *
+   * @param {string} id - The unique identifier for the component. Often generated by `useId()`.
+   * @param {HTMLElement} element - The HTML DOM element associated with the component.
+   * @param {string} name - A human-readable name for the component (e.g., "Submit Button", "Username Input").
+   * @param {ActionSchema[]} [actions=[]] - An array of actions the component supports. Defaults to an empty array.
+   *                                        Each action's `id` and `name` are used.
+   * @param {string} [description] - An optional description of the component's purpose or behavior.
+   * @returns {string} The `id` of the registered component.
+   *
+   * @remarks
+   * - This method is typically called by the {@link useHlasActions} hook or {@link Describe} components.
+   * - The `data-hlas-name` and `data-hlas-description` attributes set here are the primary source
+   *   of truth for the component's metadata in the registry. If a component is also wrapped with
+   *   the {@link action} HOC, the values provided here will generally override any similar attributes
+   *   set by the HOC for the registry's perspective.
    */
   register(
     id: string,
@@ -93,13 +138,26 @@ class Registry {
   }
 
   /**
-   * Unregister a component from the registry
+   * Unregisters a component from the HLAS system using its ID.
+   * This should be called when the component is unmounted to prevent memory leaks
+   * and stale references.
+   *
+   * @param {string} id - The ID of the component to unregister.
+   * @returns {boolean} `true` if the component was found and removed, `false` otherwise.
+   * @remarks Typically called automatically during the cleanup phase of `useEffect` in
+   *          hooks or components that use {@link Registry.register}.
    */
   unregister(id: string): boolean {
     return this.components.delete(id);
   }
+
   /**
-   * Find components by name
+   * Finds registered components whose name or description includes the given query string.
+   * The search is case-insensitive.
+   *
+   * @param {string} query - The string to search for within component names and descriptions.
+   * @returns {ComponentEntry[]} An array of {@link ComponentEntry} objects for components
+   *                             that match the query. Returns an empty array if no matches are found.
    */
   find(query: string): ComponentEntry[] {
     const results: ComponentEntry[] = [];
@@ -119,11 +177,27 @@ class Registry {
   }
 
   /**
-   * Execute an action on a component
+   * Dispatches a custom event (`hlas:execute`) on the component's DOM element
+   * to trigger a specific action.
+   *
+   * The actual execution logic for the action is expected to be handled by an event listener
+   * set up on the component, typically by the {@link useHlasActions} hook. This method
+   * itself does not execute the action's behavior.
+   *
+   * @param {string} id - The ID of the component on which to execute the action.
+   * @param {string} actionId - The identifier of the action to be executed (e.g., "click", "setValue").
+   * @param {Record<string, unknown>} [params] - Optional parameters to pass to the action handler
+   *                                             via the event's `detail` property.
+   * @returns {boolean} `true` if the event was dispatched (i.e., the component was found),
+   *                    `false` otherwise (e.g., component not found).
    */
-  execute(id: string, actionId: string, params?: Record<string, any>): boolean {
-    // This is a stub - the actual execution is handled by the useHlasActions hook
-    // This method just dispatches a custom event that the hook listens for
+  execute(
+    id: string,
+    actionId: string,
+    params?: Record<string, unknown>,
+  ): boolean {
+    // This method dispatches a custom event that the useHlasActions hook listens for.
+    // The hook is then responsible for invoking the actual action function.
     const component = this.components.get(id);
 
     if (!component) {
@@ -144,7 +218,12 @@ class Registry {
   }
 
   /**
-   * Focus a component by ID
+   * Sets programmatic focus on the DOM element of a registered component.
+   *
+   * @param {string} id - The ID of the component to focus.
+   * @returns {boolean} `true` if the component was found and its element is an `HTMLElement`
+   *                    (focus was attempted), `false` otherwise.
+   * @remarks The element must be focusable in the DOM for this to have a visual effect.
    */
   focus(id: string): boolean {
     const component = this.components.get(id);
@@ -163,16 +242,87 @@ class Registry {
   }
 
   /**
-   * Highlight a component by ID using Driver.js
-   * @param id Component ID to highlight
-   * @param duration Duration in milliseconds (defaults to 2000ms)
-   * @param tooltip Optional tooltip content to show (can be provided by LLM)
+   * @param {string} id - The ID of the component to highlight.
+   * @param {number} [duration=2000] - The duration in milliseconds for the highlight to remain active.
+   *                                   If 0 or negative, the highlight may persist until manually cleared
+   *                                   or another highlight/tour starts.
+   * @param {string} [title] - An optional title to display in the highlight popover.
+   * @param {string} [description] - Optional descriptive text to display in the highlight popover.
+   * @returns {boolean} `true` if the component was found and highlight was initiated, `false` otherwise.
+   * @remarks This method uses `driver.js` to visually highlight the component.
+   *          It will destroy any existing single-element highlight before creating a new one.
    */
+  // The JSDoc for the HlasInterface in index.ts had a 'tooltip' param, which was incorrect.
+  // This implementation correctly uses 'title' and 'description'.
+  highlight(
+    id: string,
+    duration: number = 2000,
+    title?: string,
+    description?: string,
+  ): boolean {
+    // We don't need to destroy an active tour as we now have separate instances
+    // for tour and highlight functionality
+
+    const component = this.components.get(id);
+
+    if (!component) {
+      console.error(`Component with ID ${id} not found`);
+      return false;
+    }
+
+    if (!this.highlightDriverInstance && typeof window !== "undefined") {
+      // Initialize highlight driver if it wasn't due to initial window check or other reasons
+      this.highlightDriverInstance = driver({
+        animate: true,
+        smoothScroll: true,
+        allowClose: true,
+        showProgress: false, // Typically false for single highlights
+        stagePadding: 10,
+      });
+    }
+
+    if (
+      component.element instanceof HTMLElement &&
+      this.highlightDriverInstance
+    ) {
+      // Ensure highlight driver is stopped before starting a new highlight
+      this.highlightDriverInstance.destroy();
+
+      //  Configure driver for this element
+      this.highlightDriverInstance.highlight({
+        element: component.element,
+        popover: {
+          // CAUTION: If title/description can come from untrusted (e.g., LLM) input,
+          // ensure sanitization by the caller to prevent XSS,
+          // as driver.js popover content behavior with HTML should be verified.
+          title: title,
+          description: description,
+        },
+      });
+
+      // Automatically close highlight after duration
+      if (duration > 0) {
+        setTimeout(() => {
+          this.highlightDriverInstance?.destroy();
+        }, duration);
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
   /**
-   * Start a guided tour with multiple steps
-   * @param steps Array of tour steps with component IDs and descriptions
-   * @param autoStart Whether to start the tour automatically (default: true)
-   * @returns boolean indicating if tour was successfully started
+   * Initiates a multi-step guided tour using `driver.js`.
+   * Each step highlights a registered component and can display a title and description.
+   *
+   * @param {TourStep[]} steps - An array of {@link TourStep} objects defining the sequence and content of the tour.
+   * @param {boolean} [autoStart=true] - If `true` (default), the tour starts immediately after configuration.
+   *                                     If `false`, the tour is configured but not started (can be started manually if needed, though not exposed via `window.hlas` currently).
+   * @returns {boolean} `true` if the tour was successfully configured (and possibly started),
+   *                    `false` if no valid steps were provided or an error occurred.
+   * @remarks If a tour is already active, it will be destroyed before starting a new one.
    */
   startTour(steps: TourStep[], autoStart: boolean = true): boolean {
     try {
@@ -197,6 +347,9 @@ class Registry {
         driverSteps.push({
           element: component.element,
           popover: {
+            // CAUTION: If title/description can come from untrusted (e.g., LLM) input,
+            // ensure sanitization by the caller to prevent XSS,
+            // as driver.js popover content behavior with HTML should be verified.
             title: step.title || component.name,
             description: step.description || component.description || "",
             side: step.position || "bottom",
@@ -217,7 +370,7 @@ class Registry {
         allowClose: true,
         showProgress: true,
         steps: driverSteps,
-        // @ts-ignore - opacity is supported by driver.js but not in their types
+        // @ts-expect-error - opacity is supported by driver.js but not in their types
         opacity: 0.5,
         onDestroyStarted: () => {
           this.tourDriverInstance?.destroy();
@@ -248,80 +401,30 @@ class Registry {
    * @param title Optional title to show (can be provided by LLM)
    * @param description Optional description to show (can be provided by LLM)
    */
-  highlight(
-    id: string,
-    duration: number = 2000,
-    title?: string,
-    description?: string,
-  ): boolean {
-    // We don't need to destroy an active tour as we now have separate instances
-    // for tour and highlight functionality
-
-    const component = this.components.get(id);
-
-    if (!component) {
-      console.error(`Component with ID ${id} not found`);
-      return false;
-    }
-
-    if (!this.highlightDriverInstance && typeof window !== "undefined") {
-      this.highlightDriverInstance = driver({
-        animate: true,
-        smoothScroll: true,
-        allowClose: true,
-        showProgress: false,
-        stagePadding: 10,
-      });
-    }
-
-    if (
-      component.element instanceof HTMLElement &&
-      this.highlightDriverInstance
-    ) {
-      // Ensure highlight driver is stopped before starting a new highlight
-      this.highlightDriverInstance.destroy();
-
-      //  Configure driver for this element
-      this.highlightDriverInstance.highlight({
-        element: component.element,
-        popover: {
-          title: title,
-          description: description,
-        },
-      });
-
-      // Automatically close highlight after duration
-      if (duration > 0) {
-        setTimeout(() => {
-          this.highlightDriverInstance?.destroy();
-        }, duration);
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
   /**
-   * Read the current screen state (all components regardless of visibility)
+   * Retrieves a representation of all currently registered components.
+   * This method is used to provide a snapshot of the UI's interactable elements and their state
+   * to an external system like an LLM.
+   *
+   * @returns {ScreenComponent[]} An array of {@link ScreenComponent} objects, each describing a
+   *                              registered component. The visibility of components is not determined
+   *                              by this method by default (see {@link ScreenComponent.visible}).
    */
   readScreen(): ScreenComponent[] {
     const results: ScreenComponent[] = [];
 
     for (const component of this.components.values()) {
-      // No visibility check - include all components
-      // We still calculate the rect for metadata purposes
-      const visible = true; // Set all components as visible
+      // Visibility is not determined by readScreen by default.
+      // If a future feature adds visibility checks, the 'visible' field in ScreenComponent can be populated.
 
       // Extract content from data attributes if available
-      let content: any = undefined;
+      let content: unknown = undefined;
       const contentAttr = component.element.getAttribute("data-hlas-content");
 
       if (contentAttr) {
         try {
           content = JSON.parse(contentAttr);
-        } catch (e) {
+        } catch {
           content = contentAttr;
         }
       }
@@ -330,7 +433,7 @@ class Registry {
         id: component.id,
         name: component.name,
         description: component.description,
-        visible,
+        // visible property is intentionally not set here.
         actions: component.actions,
         content,
       });

@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "docs",
+  "tsconfig": "tsconfig.json",
+  "name": "hlas API Documentation",
+  "readme": "README.md",
+  "excludePrivate": true,
+  "excludeExternals": true
+}
