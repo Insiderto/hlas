@@ -53,37 +53,35 @@ npm test
 ### Wrapping a component with `action()`
 
 ```tsx
-import { action } from 'hlas';
+import { action } from "hlas";
 
 // Create a button with an action
 const ActionButton = action(
   {
-    id: 'click',
-    name: 'Click Button',
-    description: 'Performs a click on the button'
+    id: "click",
+    name: "Click Button",
+    description: "Performs a click on the button",
   },
-  React.forwardRef((props, ref) => (
-    <button ref={ref} {...props} />
-  ))
+  React.forwardRef((props, ref) => <button ref={ref} {...props} />),
 );
 ```
 
 ### Using the `useHlasActions` hook
 
 ```tsx
-import { useHlasActions } from 'hlas';
+import { useHlasActions } from "hlas";
 
 // Define actions
 const actions = {
-  save: () => console.log('Saving data...'),
-  delete: (params) => console.log(`Deleting item ${params.id}`)
+  save: () => console.log("Saving data..."),
+  delete: (params) => console.log(`Deleting item ${params.id}`),
 };
 
 // In your component
 const buttonRef = useHlasActions(
   actions,
-  'Save Button',
-  'Saves the current form data'
+  "Save Button",
+  "Saves the current form data",
 );
 
 return <ActionButton ref={buttonRef}>Save</ActionButton>;
@@ -92,17 +90,13 @@ return <ActionButton ref={buttonRef}>Save</ActionButton>;
 ### Using Describe components
 
 ```tsx
-import { Describe } from 'hlas';
+import { Describe } from "hlas";
 
 // Create a readable list
 return (
   <Describe.List name="User List" description="A list of active users">
-    {users.map(user => (
-      <Describe.ListItem 
-        key={user.id} 
-        name={`User: ${user.name}`}
-        value={user}
-      >
+    {users.map((user) => (
+      <Describe.ListItem key={user.id} name={`User: ${user.name}`} value={user}>
         {user.name}
       </Describe.ListItem>
     ))}
@@ -123,7 +117,7 @@ console.log(screenState);
 
 ```js
 // In your LLM integration code
-window.hlas.execute('component-id', 'actionId', { param1: 'value' });
+window.hlas.execute("component-id", "actionId", { param1: "value" });
 ```
 
 ## Demo Application
@@ -136,6 +130,7 @@ The included demo is a simple Todo application that demonstrates how to:
 4. Process natural language commands
 
 Try these commands in the LLM simulator:
+
 - "What todos do I have?"
 - "Add a todo: Buy groceries"
 - "Mark 'Learn about hlas' as completed"
